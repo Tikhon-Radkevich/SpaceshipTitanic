@@ -34,9 +34,6 @@ for c in l_encod_list:
 for c in to_bool_list:
     all_data = to_bool(all_data, c)
 
-transported_df = all_data[["Transported"]]
 all_data.drop(columns=drop_list, inplace=True)
-
-all_data = input_miss_data(all_data, 5)
+all_data.to_csv("data/EncodedAllData.csv", index=False)
 print(all_data.head(7))
-
