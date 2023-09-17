@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 
 
-def age_to_transported(df):
+def side_to_h_planet(df):
     df["side"] = df["side"].map({"P": 0, "S": 1})
     age_transported_counts = df.groupby('HomePlanet')['side'].sum().reset_index()
     fig = go.Figure()
