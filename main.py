@@ -17,9 +17,42 @@ def get_data() -> pd.DataFrame:
     test["type"] = 1
     all_data = pd.concat([train, test], axis=0)
 
-    all_data[["FirstName", "Surname"]] = all_data["Name"].str.split(" ", n=1, expand=True)
-    all_data["Siblings"] = all_data.groupby(["Surname", "Cabin"]).transform("size")
+    # fill 0 where CryoSleep is True
+    mask = all_data["CryoSleep"].isna()
+    all_data.loc[mask, "CryoSleep"] = False
+    columns_to_set_zero = ["RoomService", "FoodCourt", "ShoppingMall", "Spa", "VRDeck"]
+    all_data.loc[all_data["CryoSleep"], columns_to_set_zero] = 0
+    all_data.loc[mask, "CryoSleep"] = None
 
+    # From graph: I can set some HomePlanet and Destination by deck value
+    all_data[["deck", "num", "side"]] = all_data["Cabin"].str.split("/", n=2, expand=True)
+
+    con = (all_data["deck"].isin(["C", "T", "B", "A"])) & (all_data["HomePlanet"].isna())
+    all_data.loc[con, "HomePlanet"] = "Europa"
+    all_data.loc[(all_data["deck"].isin(["G"])) & (all_data["HomePlanet"].isna()), "HomePlanet"] = "Earth"
+
+    con = (all_data["deck"].isin(["F", "E", "T"])) & (all_data["Destination"].isna())
+    all_data.loc[con, "Destination"] = "TRAPPIST-1e"
+
+    all_data.loc[all_data["HomePlanet"].isna(), "HomePlanet"] = "Earth"
+    all_data.loc[all_data["Destination"].isna(), "Destination"] = "TRAPPIST-1e"
+    # all_data.loc[all_data["deck"].isna(), "deck"] = "G"
+
+    all_data[["GroupId", "PassengerNum"]] = all_data["PassengerId"].str.split("_", n=1, expand=True)
+    all_data["GroupId"] = all_data["GroupId"].astype(int)
+    all_data["PassengerNum"] = all_data["PassengerNum"].astype(int)
+    all_data["GroupSize"] = all_data.groupby("GroupId").transform("size")
+
+    print(all_data.head(20))
+    print(all_data.isna().sum())
+
+    # plot.age_to_transported(all_data.dropna())
+
+    # siblings by Surname
+    all_data[["FirstName", "Surname"]] = all_data["Name"].str.split(" ", n=1, expand=True)
+    all_data["Siblings"] = all_data.groupby(["Surname", "GroupId"]).transform("size")
+
+    # set gender
     n_to_gen_dict = name_to_gender.get()
     n_to_gen_dict.update({None: None})
     all_data["Gender"] = None
@@ -28,7 +61,6 @@ def get_data() -> pd.DataFrame:
     mask = all_data["Gender"].isna()
     d = gender.Detector()
     all_data.loc[mask, "Gender"] = all_data.loc[mask, "FirstName"].map(d.get_gender)
-    mask = all_data["Gender"].isin(["unknown", "male", "female", "mostly_male", "mostly_female", "andy"])
     all_data["Gender"] = all_data["Gender"].map({
         "unknown": None,  # 439
         "male": "male",  # 8206
@@ -37,15 +69,6 @@ def get_data() -> pd.DataFrame:
         "mostly_female": "female",  # 41
         "andy": "female"  # 107
     })
-
-    all_data[["GroupId", "PassengerNum"]] = all_data["PassengerId"].str.split("_", n=1, expand=True)
-    all_data["GroupId"] = all_data["GroupId"].astype(int)
-    all_data["PassengerNum"] = all_data["PassengerNum"].astype(int)
-    all_data["GroupSize"] = all_data.groupby("GroupId").transform("size")
-
-    all_data[["deck", "num", "side"]] = all_data["Cabin"].str.split("/", n=2, expand=True)
-
-    # plot.age_to_transported(all_data.dropna())
 
     bins = [0, 1, 4, 12, 17, 42, float("inf")]
     labels = ["0", "1-4", "5-12", "13-17", "18-42", "43+"]
