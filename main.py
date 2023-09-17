@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 import gender_guesser.detector as gender
 
@@ -36,39 +37,83 @@ def get_data() -> pd.DataFrame:
 
     all_data.loc[all_data["HomePlanet"].isna(), "HomePlanet"] = "Earth"
     all_data.loc[all_data["Destination"].isna(), "Destination"] = "TRAPPIST-1e"
-    # all_data.loc[all_data["deck"].isna(), "deck"] = "G"
 
     all_data[["GroupId", "PassengerNum"]] = all_data["PassengerId"].str.split("_", n=1, expand=True)
     all_data["GroupId"] = all_data["GroupId"].astype(int)
     all_data["PassengerNum"] = all_data["PassengerNum"].astype(int)
     all_data["GroupSize"] = all_data.groupby("GroupId").transform("size")
 
-    print(all_data.head(20))
-    print(all_data.isna().sum())
+    all_data = all_data.sort_values(["GroupSize", "GroupId"], ascending=False)
+    # print(all_data.head(20))
+    # print(all_data.isna().sum())
 
-    # plot.age_to_transported(all_data.dropna())
+    most_common_values = all_data.groupby("GroupId").agg({
+        "deck": lambda x: x.mode().iloc[0] if not x.mode().empty else None,
+        "num": lambda x: x.mode().iloc[0] if not x.mode().empty else None,
+        "side": lambda x: x.mode().iloc[0] if not x.mode().empty else None,
+    }).reset_index()
+    all_data = all_data.merge(most_common_values, how="left", on="GroupId", suffixes=("", "_most_common"))
+    con = all_data["Cabin"].isna()
+    for column in ["deck", "num", "side"]:
+        all_data.loc[con, column] = all_data.loc[con, f"{column}_most_common"]
+        all_data.drop(columns=f"{column}_most_common", inplace=True)
+
+    all_data.loc[all_data["deck"].isna(), "deck"] = "G"
 
     # siblings by Surname
     all_data[["FirstName", "Surname"]] = all_data["Name"].str.split(" ", n=1, expand=True)
+
+    most_common_values = all_data.groupby("GroupId").agg({
+        "Surname": lambda x: x.mode().iloc[0] if not x.mode().empty else None
+    }).reset_index()
+    all_data = all_data.merge(most_common_values, how="left", on="GroupId", suffixes=("", "_most_common"))
+    con = all_data["Surname"].isna()
+    all_data.loc[con, "Surname"] = all_data.loc[con, "Surname_most_common"]
+    all_data.drop(columns="Surname_most_common", inplace=True)
+
+    singles_count = all_data["Surname"].isna().sum()
+    all_data.loc[all_data["Surname"].isna(), "Surname"] = np.array([f"Unknown_{i}" for i in range(singles_count)])
+
+    all_data.drop(columns=["Cabin", "Name", "FirstName", "num"], inplace=True)
+
+    # plot.age_to_transported(all_data.dropna())
+    con = (((all_data["RoomService"] > 0) | (all_data["FoodCourt"] > 0) | (all_data["ShoppingMall"] > 0) |
+           (all_data["Spa"] > 0) | (all_data["VRDeck"] > 0)) & (all_data["CryoSleep"].isna())).sum()
+    # plot.plot_count(all_data[con])
+    print("it is meee: ", con)
+
+    for c in ["RoomService", "FoodCourt", "FoodCourt", "Spa", "VRDeck"]:
+        con = ((all_data["Age"] < 13) & (all_data[c].isna()))
+        all_data.loc[con, c] = 0
+
+    all_data.loc[all_data["VIP"] == True, "CryoSleep"] = False
+
+
+    # con = ((all_data["RoomService"]) & (all_data["FoodCourt"] == 0) & (all_data["FoodCourt"] == 0) &
+    #        (all_data["Spa"] == 0) & (all_data["VRDeck"] == 0) & (all_data["CryoSleep"] == False))
+
     all_data["Siblings"] = all_data.groupby(["Surname", "GroupId"]).transform("size")
 
-    # set gender
-    n_to_gen_dict = name_to_gender.get()
-    n_to_gen_dict.update({None: None})
-    all_data["Gender"] = None
-    all_data["Gender"] = all_data["FirstName"].map(n_to_gen_dict)
+    print(all_data.head(20))
+    print(all_data.isna().sum())
 
-    mask = all_data["Gender"].isna()
-    d = gender.Detector()
-    all_data.loc[mask, "Gender"] = all_data.loc[mask, "FirstName"].map(d.get_gender)
-    all_data["Gender"] = all_data["Gender"].map({
-        "unknown": None,  # 439
-        "male": "male",  # 8206
-        "female": "female",  # 4325
-        "mostly_male": "male",  # 124
-        "mostly_female": "female",  # 41
-        "andy": "female"  # 107
-    })
+    # set gender
+    # n_to_gen_dict = name_to_gender.get()
+    # n_to_gen_dict.update({None: None})
+    # all_data["Gender"] = None
+    # all_data["Gender"] = all_data["FirstName"].map(n_to_gen_dict)
+    #
+    # mask = all_data["Gender"].isna()
+    # d = gender.Detector()
+    # all_data.loc[mask, "Gender"] = all_data.loc[mask, "FirstName"].map(d.get_gender)
+    # all_data["Gender"] = all_data["Gender"].map({
+    #     "unknown": None,  # 439
+    #     "male": "male",  # 8206
+    #     "female": "female",  # 4325
+    #     "mostly_male": "male",  # 124
+    #     "mostly_female": "female",  # 41
+    #     "andy": "female"  # 107
+    # })
 
     bins = [0, 1, 4, 12, 17, 42, float("inf")]
     labels = ["0", "1-4", "5-12", "13-17", "18-42", "43+"]
