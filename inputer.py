@@ -29,21 +29,31 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
 
-    all_data = pd.read_csv("data/EncodedAllData.csv")
-    test_pos = all_data["Transported"].isna()
+    all_data = pd.read_csv("data/EncodedAllData_1.csv")
+    X_data = all_data.drop(columns="Transported")
+    y = all_data["Transported"]
+    all_data = input_miss_data(X_data, 6)
+    all_data.loc[:, "side"] = all_data["side"].round(0)
+
+    all_data["Transported"] = y
+
+    print(all_data.head(4))
+    all_data.to_csv("data/FilledAllData_1.csv", index=False)
+
+    # test_pos = all_data["Transported"].isna()
 
     # probability_true = 0.1
     # test_pos = np.random.choice([True, False], size=X_data.shape[0], p=[probability_true, 1 - probability_true])
     # y_test = X_data[test_pos]["Transported"]
     # X_data.loc[test_pos, "Transported"] = None
 
-    all_data = input_miss_data(all_data, 6)
-    for c in ["CryoSleep", "VIP"]:
-        all_data = round_predict(all_data, c)
-
-    all_data.loc[test_pos, "Transported"] = None
-    all_data.to_csv("data/FilledAllData.csv", index=False)
-    print(all_data.head(7))
+    # all_data = input_miss_data(all_data, 6)
+    # for c in ["CryoSleep", "VIP"]:
+    #     all_data = round_predict(all_data, c)
+    #
+    # all_data.loc[test_pos, "Transported"] = None
+    # all_data.to_csv("data/FilledAllData.csv", index=False)
+    # print(all_data.head(7))
 
     # y_pred = predict[test_pos]["Transported"]
     # accuracy = accuracy_score(y_pred, y_test)

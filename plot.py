@@ -32,10 +32,8 @@ def side_to_h_planet(df):
 
 
 def plot_count(data):
-
-
     # Group the filtered data by 'HomePlanet' and count the number of people from each planet
-    planet_counts = data['deck'].value_counts()
+    planet_counts = data['Age'].value_counts()
 
     # Create a bar chart
     fig = go.Figure(go.Bar(
