@@ -14,14 +14,15 @@ def round_predict(data: pd.DataFrame, column) -> pd.DataFrame:
 def input_miss_data(data: pd.DataFrame, n_neighbors=5):
 
     # Standardize data
-    scaler = MinMaxScaler((0, 1))
-    x_scaled = scaler.fit_transform(data)
+    # scaler = MinMaxScaler((0, 1))
+    # x_scaled = scaler.fit_transform(data)
 
     # Perform KNN imputation
     knn_imputer = KNNImputer(n_neighbors=n_neighbors)
-    x_imputed = knn_imputer.fit_transform(x_scaled)
+    x_imputed = knn_imputer.fit_transform(data)
 
-    data.loc[:, data.columns] = scaler.inverse_transform(x_imputed)
+    # data.loc[:, data.columns] = scaler.inverse_transform(x_imputed)
+    data.loc[:, data.columns] = x_imputed
     return data
 
 
@@ -29,7 +30,7 @@ if __name__ == "__main__":
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
 
-    all_data = pd.read_csv("data/EncodedAllData_1.csv")
+    all_data = pd.read_csv("data/Dummies.csv")
     X_data = all_data.drop(columns="Transported")
     y = all_data["Transported"]
     all_data = input_miss_data(X_data, 6)
@@ -37,8 +38,8 @@ if __name__ == "__main__":
 
     all_data["Transported"] = y
 
-    print(all_data.head(4))
-    all_data.to_csv("data/FilledAllData_1.csv", index=False)
+    print(all_data.isna().sum())
+    all_data.to_csv("data/FilledAllData_2.csv", index=False)
 
     # test_pos = all_data["Transported"].isna()
 
