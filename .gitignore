@@ -4,6 +4,6 @@ __pycache__/
 .env
 *.log
 dev/
-data/
 catboost_info/
+dev/
 
